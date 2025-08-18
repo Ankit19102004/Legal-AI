@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Legal-AI</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>Legal-AI 📜🤖</h1>
+            <p>Upload a legal document (PDF) to get started.</p>
+        </header>
+
+        <main>
+            <div class="upload-section">
+                <input type="file" id="pdf-upload" accept=".pdf">
+                <button id="upload-button">Process Document</button>
+            </div>
+
+            <div id="status-message"></div>
+
+            <div class="chat-section hidden" id="chat-section">
+                <div id="response-area">
+                    <p class="ai-message">Document processed. Ask me anything about it!</p>
+                </div>
+                <div class="input-area">
+                    <input type="text" id="question-input" placeholder="e.g., What is the termination clause?">
+                    <button id="ask-button">Ask</button>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="script.js"></script>
+</body>
+
+</html>

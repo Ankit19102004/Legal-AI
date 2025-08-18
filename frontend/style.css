@@ -1,0 +1,114 @@
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: #f4f7f9;
+    color: #333;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+}
+
+.container {
+    width: 100%;
+    max-width: 700px;
+    background-color: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    padding: 2rem;
+    box-sizing: border-box;
+}
+
+header {
+    text-align: center;
+    border-bottom: 1px solid #e0e0e0;
+    padding-bottom: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+h1 {
+    color: #1a73e8;
+    margin: 0;
+}
+
+.upload-section {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+input[type="file"] {
+    flex-grow: 1;
+}
+
+button {
+    background-color: #1a73e8;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.2s ease;
+}
+
+button:hover {
+    background-color: #155ab6;
+}
+
+#status-message {
+    text-align: center;
+    padding: 10px;
+    border-radius: 8px;
+    font-weight: 500;
+}
+
+.chat-section {
+    margin-top: 1.5rem;
+}
+
+.hidden {
+    display: none;
+}
+
+#response-area {
+    height: 300px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 1rem;
+    overflow-y: auto;
+    background-color: #fafafa;
+    margin-bottom: 1rem;
+}
+
+.ai-message,
+.user-message {
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    max-width: 80%;
+    line-height: 1.5;
+}
+
+.user-message {
+    background-color: #e1f5fe;
+    margin-left: auto;
+    text-align: right;
+}
+
+.ai-message {
+    background-color: #f1f3f4;
+}
+
+.input-area {
+    display: flex;
+    gap: 1rem;
+}
+
+#question-input {
+    flex-grow: 1;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 1rem;
+}
