@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Professional Legal AI Assistant - Upload legal documents and get intelligent answers">
+    <meta name="keywords" content="legal AI, document analysis, legal assistant, AI lawyer">
+    <title>LegalEase AI - Professional Legal Document Analysis</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-content">
+                <div class="logo-section">
+                    <i class="fas fa-balance-scale logo-icon"></i>
+                    <h1 class="app-title">LegalEase AI</h1>
+                </div>
+                <p class="app-subtitle">Professional Legal Document Analysis & Q&A</p>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Upload Section -->
+            <section class="upload-section" id="upload-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-upload"></i> Document Upload</h2>
+                    <p>Upload a legal document (PDF) to begin analysis</p>
+                </div>
+                
+                <div class="upload-area" id="upload-area">
+                    <div class="upload-drop-zone" id="upload-drop-zone">
+                        <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                        <p class="upload-text">Drag & drop your PDF here or click to browse</p>
+                        <p class="upload-hint">Maximum file size: 16MB</p>
+                        <input type="file" id="pdf-upload" accept=".pdf" class="file-input">
+                        <button type="button" class="upload-btn" id="upload-btn">
+                            <i class="fas fa-folder-open"></i> Choose File
+                        </button>
+                    </div>
+                </div>
+
+                <div class="upload-status" id="upload-status"></div>
+            </section>
+
+            <!-- Chat Section -->
+            <section class="chat-section hidden" id="chat-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-comments"></i> Document Q&A</h2>
+                    <p>Ask questions about your uploaded document</p>
+                    <div class="document-info" id="document-info">
+                        <span class="info-badge">
+                            <i class="fas fa-file-pdf"></i>
+                            <span id="document-name">Document loaded</span>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="chat-container">
+                    <div class="chat-messages" id="chat-messages">
+                        <div class="welcome-message">
+                            <i class="fas fa-robot"></i>
+                            <p>Hello! I've analyzed your document. Ask me any questions about it.</p>
+                        </div>
+                    </div>
+
+                    <div class="chat-input-container">
+                        <div class="input-wrapper">
+                            <input 
+                                type="text" 
+                                id="question-input" 
+                                placeholder="e.g., What are the termination clauses? What are the key obligations?"
+                                class="question-input"
+                                autocomplete="off"
+                            >
+                            <button type="button" id="ask-btn" class="ask-btn" disabled>
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                        <div class="input-hint">
+                            <i class="fas fa-lightbulb"></i>
+                            <span>Press Enter to send or click the send button</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chat-actions">
+                    <button type="button" id="clear-btn" class="clear-btn">
+                        <i class="fas fa-trash"></i> Clear Document
+                    </button>
+                    <button type="button" id="new-upload-btn" class="new-upload-btn">
+                        <i class="fas fa-plus"></i> Upload New Document
+                    </button>
+                </div>
+            </section>
+
+            <!-- Loading Overlay -->
+            <div class="loading-overlay hidden" id="loading-overlay">
+                <div class="loading-content">
+                    <div class="spinner"></div>
+                    <p id="loading-text">Processing document...</p>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="app-footer">
+            <p>&copy; 2024 LegalEase AI. Professional legal document analysis powered by AI.</p>
+        </footer>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="script.js"></script>
+</body>
+</html>
