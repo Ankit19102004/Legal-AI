@@ -10,8 +10,6 @@ class Config:
     
     # API Configuration
     GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
-    if not GOOGLE_API_KEY:
-        raise ValueError("GOOGLE_API_KEY environment variable is required")
     
     # Flask Configuration
     SECRET_KEY = os.getenv('SECRET_KEY', 'your-secret-key-change-in-production')
@@ -34,8 +32,26 @@ class Config:
     CORS_ORIGINS = os.getenv('CORS_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000').split(',')
     
     @classmethod
+    def validate_config(cls):
+        """Validate configuration and return any errors."""
+        errors = []
+        
+        if not cls.GOOGLE_API_KEY:
+            errors.append("GOOGLE_API_KEY environment variable is required")
+        elif cls.GOOGLE_API_KEY == "your_google_ai_api_key_here":
+            errors.append("GOOGLE_API_KEY must be set to a valid API key, not the placeholder value")
+        
+        return errors
+    
+    @classmethod
     def init_app(cls, app):
         """Initialize Flask app with configuration."""
+        # Validate configuration first
+        errors = cls.validate_config()
+        if errors:
+            error_msg = "\n".join(errors)
+            raise ValueError(f"Configuration errors:\n{error_msg}")
+        
         # Create necessary directories
         cls.UPLOAD_FOLDER.mkdir(exist_ok=True)
         cls.VECTOR_STORE_PATH.mkdir(exist_ok=True)

@@ -5,7 +5,7 @@ from pathlib import Path
 import fitz  # PyMuPDF
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
-from langchain.vectorstores import FAISS
+from langchain_community.vectorstores import FAISS
 from langchain.chains.question_answering import load_qa_chain
 from langchain.prompts import PromptTemplate
 from langchain.schema import Document
@@ -147,8 +147,9 @@ class LegalAI:
             
             Answer:"""
             
+            # Use Gemini 1.5 Flash for better quota management
             model = ChatGoogleGenerativeAI(
-                model="gemini-1.5-pro-latest", 
+                model="gemini-1.5-flash-latest", 
                 temperature=Config.AI_TEMPERATURE, 
                 google_api_key=Config.GOOGLE_API_KEY
             )
@@ -218,12 +219,20 @@ class LegalAI:
             if not Config.VECTOR_STORE_PATH.exists():
                 raise RuntimeError("No document has been processed yet. Please upload a document first.")
             
-            # Load vector store
-            vector_store = FAISS.load_local(
-                str(Config.VECTOR_STORE_PATH), 
-                self.embeddings, 
-                allow_dangerous_deserialization=True
-            )
+            # Load vector store - handle different FAISS versions
+            try:
+                # Try with newer FAISS version
+                vector_store = FAISS.load_local(
+                    str(Config.VECTOR_STORE_PATH), 
+                    self.embeddings, 
+                    allow_dangerous_deserialization=True
+                )
+            except TypeError:
+                # Fallback for older FAISS versions
+                vector_store = FAISS.load_local(
+                    str(Config.VECTOR_STORE_PATH), 
+                    self.embeddings
+                )
             
             # Search for relevant documents
             docs = vector_store.similarity_search(question, k=4)
@@ -244,8 +253,22 @@ class LegalAI:
             return response["output_text"]
             
         except Exception as e:
-            logger.error(f"Question answering failed: {e}")
-            raise RuntimeError(f"Failed to answer question: {e}")
+            error_msg = str(e)
+            logger.error(f"Question answering failed: {error_msg}")
+            
+            # Handle specific quota errors
+            if "429" in error_msg or "quota" in error_msg.lower() or "exceeded" in error_msg.lower():
+                return ("I'm currently experiencing high demand and have reached my usage limits. "
+                        "Please try again in a few minutes, or consider upgrading your Google AI plan "
+                        "for unlimited access. This is a temporary issue that will resolve automatically.")
+            
+            # Handle other specific errors
+            elif "No document has been processed" in error_msg:
+                return "Please upload a document first before asking questions."
+            elif "vector store" in error_msg.lower():
+                return "There was an issue with the document processing. Please try uploading the document again."
+            else:
+                return f"Sorry, I encountered an error while processing your question: {error_msg[:100]}..."
 
 # Global instance
 legal_ai = LegalAI()
