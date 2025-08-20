@@ -102,11 +102,12 @@ class LegalAIApp {
         try {
             const response = await fetch(`${this.config.apiBaseUrl}${this.config.endpoints.status}`);
             if (response.ok) {
-                const data = await response.json();
-                if (data.data.document_processed) {
+                const payload = await response.json();
+                // Backend returns top-level fields (no data wrapper)
+                if (payload.document_processed) {
                     this.state.documentLoaded = true;
                     this.showChatSection();
-                    this.updateDocumentInfo(data.data);
+                    this.updateDocumentInfo(payload);
                 }
             }
         } catch (error) {
@@ -166,15 +167,18 @@ class LegalAIApp {
             
             if (response.ok) {
                 this.state.documentLoaded = true;
+                // Backend returns top-level fields: filename, text_length, chunks_count
                 this.state.currentDocument = {
                     name: file.name,
                     size: file.size,
-                    ...result.data
+                    filename: result.filename,
+                    text_length: result.text_length,
+                    chunks_count: result.chunks_count
                 };
                 
-                this.showToast('Document processed successfully!', 'success');
+                this.showToast(result.message || 'Document processed successfully!', 'success');
                 this.showChatSection();
-                this.updateDocumentInfo(result.data);
+                this.updateDocumentInfo(this.state.currentDocument);
                 this.elements.uploadStatus.innerHTML = '';
                 
             } else {
@@ -227,7 +231,8 @@ class LegalAIApp {
             const result = await response.json();
             
             if (response.ok) {
-                this.addMessage(result.data.answer, 'ai');
+                // Backend returns top-level answer
+                this.addMessage(result.answer, 'ai');
             } else {
                 throw new Error(result.error || 'Failed to get answer');
             }
@@ -373,3 +378,456 @@ document.addEventListener('DOMContentLoaded', () => {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = LegalAIApp;
 }
+
+// Tab navigation
+(function tabs(){
+  document.addEventListener('DOMContentLoaded', () => {
+    const tabs = Array.from(document.querySelectorAll('.nav-tab'));
+    const sections = ['#upload-section', '#chat-section', '#advisory-section'].map(s => document.querySelector(s));
+    function show(target){
+      sections.forEach(sec => sec.classList.add('hidden-tab'));
+      const el = document.querySelector(target);
+      if (el) el.classList.remove('hidden-tab');
+      tabs.forEach(t => t.classList.toggle('active', t.dataset.target === target));
+    }
+    // initialize
+    show('#upload-section');
+    tabs.forEach(t => t.addEventListener('click', () => show(t.dataset.target)));
+  });
+})();
+
+/* Append advisory tools wiring */
+(function attachAdvisoryTools(){
+    document.addEventListener('DOMContentLoaded', () => {
+        // If new result-block UI exists, skip legacy wiring to avoid raw JSON output
+        if (document.querySelector('.result-block')) return;
+        const apiBase = (window.legalAIApp && window.legalAIApp.config.apiBaseUrl) || 'http://127.0.0.1:5000';
+
+        // Checklist (legacy)
+        const btnChecklist = document.getElementById('generate-checklist');
+        const outChecklist = document.getElementById('checklist-output');
+        if (btnChecklist && outChecklist) {
+            btnChecklist.addEventListener('click', async () => {
+                const scenario = {
+                    country: document.getElementById('scenario-country')?.value || '',
+                    state: document.getElementById('scenario-state')?.value || '',
+                    company_type: document.getElementById('scenario-company-type')?.value || '',
+                    industry: document.getElementById('scenario-industry')?.value || '',
+                    online_business: document.getElementById('scenario-online')?.checked || false,
+                    handles_personal_data: document.getElementById('scenario-personal-data')?.checked || false,
+                };
+                outChecklist.textContent = 'Generating checklist...';
+                try {
+                    const res = await fetch(`${apiBase}/api/checklist`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(scenario)
+                    });
+                    const data = await res.json();
+                    if (!res.ok && data.error) throw new Error(data.error);
+                    outChecklist.textContent = JSON.stringify(data, null, 2);
+                } catch (e) {
+                    outChecklist.textContent = `Error: ${e.message}`;
+                }
+            });
+        }
+
+        // Summarize (legacy)
+        const btnSum = document.getElementById('summarize-btn');
+        const inSum = document.getElementById('summary-input');
+        const outSum = document.getElementById('summary-output');
+        if (btnSum && inSum && outSum) {
+            btnSum.addEventListener('click', async () => {
+                const content = inSum.value.trim();
+                if (!content) return;
+                outSum.textContent = 'Summarizing...';
+                try {
+                    const res = await fetch(`${apiBase}/api/summarize`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ content })
+                    });
+                    const data = await res.json();
+                    if (!res.ok && data.error) throw new Error(data.error);
+                    outSum.textContent = JSON.stringify(data, null, 2);
+                } catch (error) {
+                    outSum.textContent = `Error: ${error.message}`;
+                }
+            });
+        }
+
+        // Explain (legacy)
+        const btnExplain = document.getElementById('explain-btn');
+        const inClause = document.getElementById('clause-input');
+        const outExplain = document.getElementById('explain-output');
+        if (btnExplain && inClause && outExplain) {
+            btnExplain.addEventListener('click', async () => {
+                const clause = inClause.value.trim();
+                if (!clause) return;
+                outExplain.textContent = 'Explaining...';
+                try {
+                    const res = await fetch(`${apiBase}/api/explain`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ clause })
+                    });
+                    const data = await res.json();
+                    if (!res.ok && data.error) throw new Error(data.error);
+                    outExplain.textContent = JSON.stringify(data, null, 2);
+                } catch (error) {
+                    outExplain.textContent = `Error: ${error.message}`;
+                }
+            });
+        }
+
+        // Classify (legacy)
+        const btnClassify = document.getElementById('classify-btn');
+        const filesClassify = document.getElementById('classify-files');
+        const outClassify = document.getElementById('classify-output');
+        if (btnClassify && filesClassify && outClassify) {
+            btnClassify.addEventListener('click', async () => {
+                if (!filesClassify.files || filesClassify.files.length === 0) return;
+                outClassify.textContent = 'Classifying...';
+                try {
+                    const fd = new FormData();
+                    Array.from(filesClassify.files).forEach(f => fd.append('files', f));
+                    const res = await fetch(`${apiBase}/api/classify`, { method: 'POST', body: fd });
+                    const data = await res.json();
+                    if (!res.ok && data.error) throw new Error(data.error);
+                    outClassify.textContent = JSON.stringify(data, null, 2);
+                } catch (error) {
+                    outClassify.textContent = `Error: ${error.message}`;
+                }
+            });
+        }
+
+        // Gap (legacy)
+        const btnGap = document.getElementById('gap-btn');
+        const inChecklist = document.getElementById('gap-checklist');
+        const inDocs = document.getElementById('gap-documents');
+        const outGap = document.getElementById('gap-output');
+        if (btnGap && inChecklist && inDocs && outGap) {
+            btnGap.addEventListener('click', async () => {
+                let checklist, documents;
+                try { checklist = JSON.parse(inChecklist.value); } catch { outGap.textContent = 'Invalid checklist JSON'; return; }
+                try {
+                    const parsed = JSON.parse(inDocs.value);
+                    documents = parsed.documents || parsed;
+                } catch { outGap.textContent = 'Invalid documents JSON'; return; }
+                outGap.textContent = 'Analyzing gaps...';
+                try {
+                    const res = await fetch(`${apiBase}/api/gap`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ checklist, documents })
+                    });
+                    const data = await res.json();
+                    if (!res.ok && data.error) throw new Error(data.error);
+                    outGap.textContent = JSON.stringify(data, null, 2);
+                } catch (error) {
+                    outGap.textContent = `Error: ${error.message}`;
+                }
+            });
+        }
+    });
+})();
+
+// Theme toggle and render helpers
+(function uiEnhancements(){
+  document.addEventListener('DOMContentLoaded', () => {
+    const root = document.documentElement;
+    const btn = document.getElementById('theme-toggle');
+    if (btn) {
+      const saved = localStorage.getItem('theme') || 'light';
+      if (saved === 'dark') root.setAttribute('data-theme', 'dark');
+      btn.addEventListener('click', () => {
+        const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        if (next === 'dark') root.setAttribute('data-theme', 'dark'); else root.removeAttribute('data-theme');
+        localStorage.setItem('theme', next);
+      });
+    }
+
+    // Toggle view / copy JSON
+    function bindResultBlock(key){
+      const toggle = document.querySelector(`.toggle-view[data-target="${key}"]`);
+      const copy = document.querySelector(`.copy-json[data-target="${key}"]`);
+      const rendered = document.getElementById(`${key}-output`);
+      const jsonEl = document.getElementById(`${key}-json`);
+      if (toggle && rendered && jsonEl) {
+        toggle.addEventListener('click', () => {
+          const showingJson = !jsonEl.classList.contains('hidden');
+          if (showingJson) {
+            jsonEl.classList.add('hidden');
+            rendered.classList.remove('hidden');
+            toggle.textContent = 'View JSON';
+          } else {
+            jsonEl.classList.remove('hidden');
+            rendered.classList.add('hidden');
+            toggle.textContent = 'View Rendered';
+          }
+        });
+      }
+      if (copy && jsonEl) {
+        copy.addEventListener('click', async () => {
+          try { await navigator.clipboard.writeText(jsonEl.textContent || ''); } catch {}
+        });
+      }
+    }
+    ['checklist','summary','explain','classify','gap'].forEach(bindResultBlock);
+
+    // Pretty render helpers
+    function setJSON(key, data){
+      const el = document.getElementById(`${key}-json`);
+      if (el) el.textContent = JSON.stringify(data, null, 2);
+    }
+    function setRendered(key, node){
+      const el = document.getElementById(`${key}-output`);
+      if (el) { el.innerHTML = ''; el.appendChild(node); }
+    }
+
+    function renderList(items){
+      const ul = document.createElement('ul');
+      ul.style.margin = '0';
+      items.forEach(i => { const li = document.createElement('li'); li.textContent = typeof i === 'string' ? i : JSON.stringify(i); ul.appendChild(li); });
+      return ul;
+    }
+
+    function renderChecklist(data){
+      const wrap = document.createElement('div');
+      const h = document.createElement('h4'); h.textContent = `${data.entity_type || ''} • ${data.jurisdiction || ''}`.trim(); wrap.appendChild(h);
+      if (Array.isArray(data.assumptions) && data.assumptions.length){
+        const t = document.createElement('div'); t.innerHTML = '<strong>Assumptions</strong>'; wrap.appendChild(t); wrap.appendChild(renderList(data.assumptions));
+      }
+      if (Array.isArray(data.checklist)){
+        const g = document.createElement('div'); g.innerHTML = '<strong>Checklist</strong>'; wrap.appendChild(g);
+        const list = document.createElement('ol');
+        data.checklist.forEach(item => {
+          const li = document.createElement('li');
+          const title = document.createElement('div'); title.innerHTML = `<strong>${item.title || item.id}</strong> ${item.mandatory ? '<span style="color:#10b981">(mandatory)</span>' : ''}`;
+          const desc = document.createElement('div'); desc.textContent = item.description || '';
+          li.appendChild(title); li.appendChild(desc); list.appendChild(li);
+        });
+        wrap.appendChild(list);
+      }
+      return wrap;
+    }
+
+    function renderSummary(data){
+      const wrap = document.createElement('div');
+      const s = document.createElement('p'); s.textContent = data.summary || ''; wrap.appendChild(s);
+      const cols = document.createElement('div'); cols.style.display = 'grid'; cols.style.gridTemplateColumns = 'repeat(2, minmax(0,1fr))'; cols.style.gap='1rem';
+      const left = document.createElement('div'); left.innerHTML = '<strong>Key points</strong>'; left.appendChild(renderList(data.key_points || []));
+      const right = document.createElement('div'); right.innerHTML = '<strong>Obligations</strong>'; right.appendChild(renderList(data.obligations || []));
+      cols.appendChild(left); cols.appendChild(right); wrap.appendChild(cols);
+      const tl = document.createElement('div'); tl.innerHTML = '<strong>Timelines</strong>'; wrap.appendChild(tl); wrap.appendChild(renderList(data.timelines || []));
+      const rk = document.createElement('div'); rk.innerHTML = '<strong>Risks</strong>'; wrap.appendChild(rk); wrap.appendChild(renderList((data.risks||[]).map(r=>`${r.risk||r} ${r.severity?`(severity: ${r.severity})`:''}`)));
+      return wrap;
+    }
+
+    function renderExplain(data){
+      const wrap = document.createElement('div');
+      const e = document.createElement('p'); e.textContent = data.explanation || ''; wrap.appendChild(e);
+      const cols = document.createElement('div'); cols.style.display='grid'; cols.style.gridTemplateColumns='repeat(2, minmax(0,1fr))'; cols.style.gap='1rem';
+      const pros = document.createElement('div'); pros.innerHTML = '<strong>Pros</strong>'; pros.appendChild(renderList(data.pros || []));
+      const cons = document.createElement('div'); cons.innerHTML = '<strong>Cons</strong>'; cons.appendChild(renderList(data.cons || []));
+      cols.appendChild(pros); cols.appendChild(cons); wrap.appendChild(cols);
+      const rk = document.createElement('div'); rk.innerHTML = '<strong>Risks</strong>'; wrap.appendChild(rk); wrap.appendChild(renderList((data.risks||[]).map(r=>`${r.risk||r} ${r.severity?`(severity: ${r.severity})`:''}`)));
+      return wrap;
+    }
+
+    function renderClassify(data){
+      const wrap = document.createElement('div');
+      const docs = Array.isArray(data.documents) ? data.documents : [];
+      docs.forEach(d => {
+        const card = document.createElement('div'); card.style.border='1px solid var(--gray-200)'; card.style.padding='0.75rem'; card.style.borderRadius='0.5rem'; card.style.marginBottom='0.5rem';
+        const t = document.createElement('div'); t.innerHTML = `<strong>${d.filename}</strong> • <span>${d.doc_type||'Unknown'}</span>`; card.appendChild(t);
+        const s = document.createElement('div'); s.textContent = d.summary || ''; card.appendChild(s);
+        wrap.appendChild(card);
+      });
+      return wrap;
+    }
+
+    function renderGap(data){
+      const wrap = document.createElement('div');
+      const miss = document.createElement('div'); miss.innerHTML = '<strong>Missing Items</strong>'; wrap.appendChild(miss); wrap.appendChild(renderList(data.missing_items||[]));
+      const partial = document.createElement('div'); partial.innerHTML = '<strong>Partially Covered</strong>'; wrap.appendChild(partial); wrap.appendChild(renderList((data.partially_covered||[]).map(p=>`${p.id||JSON.stringify(p)} ${p.note?`- ${p.note}`:''}`)));
+      const recs = document.createElement('div'); recs.innerHTML = '<strong>Recommendations</strong>'; wrap.appendChild(recs); wrap.appendChild(renderList(data.recommendations||[]));
+      return wrap;
+    }
+
+    // Expose setters used by advisory tool handlers
+    window.LE_RENDER = { setJSON, setRendered, renderChecklist, renderSummary, renderExplain, renderClassify, renderGap };
+  });
+})();
+
+(function integrateRenders(){
+  document.addEventListener('DOMContentLoaded', () => {
+    const R = window.LE_RENDER;
+    if (!R) return;
+
+    // Checklist
+    const btnChecklist = document.getElementById('generate-checklist');
+    if (btnChecklist) {
+      btnChecklist.addEventListener('click', async () => {
+        const apiBase = (window.legalAIApp && window.legalAIApp.config.apiBaseUrl) || 'http://127.0.0.1:5000';
+        const scenario = {
+          country: document.getElementById('scenario-country')?.value || '',
+          state: document.getElementById('scenario-state')?.value || '',
+          company_type: document.getElementById('scenario-company-type')?.value || '',
+          industry: document.getElementById('scenario-industry')?.value || '',
+          online_business: document.getElementById('scenario-online')?.checked || false,
+          handles_personal_data: document.getElementById('scenario-personal-data')?.checked || false,
+        };
+        R.setRendered('checklist', document.createTextNode('Generating checklist...'));
+        try {
+          const res = await fetch(`${apiBase}/api/checklist`, { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(scenario)});
+          const data = await res.json();
+          if (!res.ok && data.error) throw new Error(data.error);
+          R.setJSON('checklist', data);
+          R.setRendered('checklist', R.renderChecklist(data));
+        } catch (e) { R.setRendered('checklist', document.createTextNode(`Error: ${e.message}`)); }
+      });
+    }
+
+    // Summarize
+    const btnSum = document.getElementById('summarize-btn');
+    if (btnSum) {
+      btnSum.addEventListener('click', async () => {
+        const apiBase = (window.legalAIApp && window.legalAIApp.config.apiBaseUrl) || 'http://127.0.0.1:5000';
+        const content = document.getElementById('summary-input')?.value?.trim(); if (!content) return;
+        R.setRendered('summary', document.createTextNode('Summarizing...'));
+        try {
+          const res = await fetch(`${apiBase}/api/summarize`, { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({content})});
+          const data = await res.json();
+          if (!res.ok && data.error) throw new Error(data.error);
+          R.setJSON('summary', data);
+          R.setRendered('summary', R.renderSummary(data));
+        } catch (e) { R.setRendered('summary', document.createTextNode(`Error: ${e.message}`)); }
+      });
+    }
+
+    // Explain
+    const btnExplain = document.getElementById('explain-btn');
+    if (btnExplain) {
+      btnExplain.addEventListener('click', async () => {
+        const apiBase = (window.legalAIApp && window.legalAIApp.config.apiBaseUrl) || 'http://127.0.0.1:5000';
+        const clause = document.getElementById('clause-input')?.value?.trim(); if (!clause) return;
+        R.setRendered('explain', document.createTextNode('Explaining...'));
+        try {
+          const res = await fetch(`${apiBase}/api/explain`, { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({clause})});
+          const data = await res.json();
+          if (!res.ok && data.error) throw new Error(data.error);
+          R.setJSON('explain', data);
+          R.setRendered('explain', R.renderExplain(data));
+        } catch (e) { R.setRendered('explain', document.createTextNode(`Error: ${e.message}`)); }
+      });
+    }
+
+    // Classify
+    const btnClassify = document.getElementById('classify-btn');
+    if (btnClassify) {
+      btnClassify.addEventListener('click', async () => {
+        const apiBase = (window.legalAIApp && window.legalAIApp.config.apiBaseUrl) || 'http://127.0.0.1:5000';
+        const files = document.getElementById('classify-files')?.files; if (!files || files.length===0) return;
+        R.setRendered('classify', document.createTextNode('Classifying...'));
+        try {
+          const fd = new FormData(); Array.from(files).forEach(f=>fd.append('files', f));
+          const res = await fetch(`${apiBase}/api/classify`, { method: 'POST', body: fd });
+          const data = await res.json();
+          if (!res.ok && data.error) throw new Error(data.error);
+          R.setJSON('classify', data);
+          R.setRendered('classify', R.renderClassify(data));
+        } catch (e) { R.setRendered('classify', document.createTextNode(`Error: ${e.message}`)); }
+      });
+    }
+
+    // Gap
+    const btnGap = document.getElementById('gap-btn');
+    if (btnGap) {
+      btnGap.addEventListener('click', async () => {
+        const apiBase = (window.legalAIApp && window.legalAIApp.config.apiBaseUrl) || 'http://127.0.0.1:5000';
+        let checklist, documents;
+        try { checklist = JSON.parse(document.getElementById('gap-checklist')?.value || '{}'); } catch { R.setRendered('gap', document.createTextNode('Invalid checklist JSON')); return; }
+        try {
+          const raw = document.getElementById('gap-documents')?.value || '[]';
+          const parsed = JSON.parse(raw); documents = parsed.documents || parsed;
+        } catch { R.setRendered('gap', document.createTextNode('Invalid documents JSON')); return; }
+        R.setRendered('gap', document.createTextNode('Analyzing...'));
+        try {
+          const res = await fetch(`${apiBase}/api/gap`, { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({checklist, documents})});
+          const data = await res.json();
+          if (!res.ok && data.error) throw new Error(data.error);
+          R.setJSON('gap', data);
+          R.setRendered('gap', R.renderGap(data));
+        } catch (e) { R.setRendered('gap', document.createTextNode(`Error: ${e.message}`)); }
+      });
+    }
+  });
+})();
+
+(function oneClickAnalysis(){
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('analyze-btn');
+    const input = document.getElementById('analyze-file');
+    if (!btn || !input) return;
+    const apiBase = (window.legalAIApp && window.legalAIApp.config.apiBaseUrl) || 'http://127.0.0.1:5000';
+
+    function renderListTo(id, arr, formatter){
+      const el = document.getElementById(id); if (!el) return; el.innerHTML = '';
+      (arr||[]).forEach(x => { const li = document.createElement('li'); li.textContent = formatter? formatter(x) : (typeof x === 'string' ? x : JSON.stringify(x)); el.appendChild(li); });
+    }
+
+    btn.addEventListener('click', async () => {
+      if (!input.files || input.files.length === 0) return;
+      const fd = new FormData(); fd.append('file', input.files[0]);
+      // Loading states
+      renderListTo('analysis-obligations', ['Loading...']);
+      renderListTo('analysis-timelines', ['Loading...']);
+      renderListTo('analysis-risks', ['Loading...']);
+      renderListTo('analysis-glossary', ['Loading...']);
+      const R = window.LE_RENDER;
+      if (R) { R.setRendered('analysis-summary', document.createTextNode('Analyzing...')); }
+      try {
+        const res = await fetch(`${apiBase}/api/analyze`, { method: 'POST', body: fd });
+        const data = await res.json();
+        if (!res.ok && data.error) throw new Error(data.error);
+        // Summary
+        if (R) {
+          R.setJSON('analysis-summary', data.summary || {});
+          R.setRendered('analysis-summary', R.renderSummary(data.summary || {}));
+        }
+        // Lists
+        renderListTo('analysis-obligations', data.obligations || []);
+        renderListTo('analysis-timelines', data.timelines || []);
+        renderListTo('analysis-risks', (data.risks||[]).map(r=>`${r.risk||r} ${r.severity?`(severity: ${r.severity})`:''}`));
+        renderListTo('analysis-glossary', data.glossary || [], g => `${g.term||''}: ${g.definition||''}`);
+        // Clauses
+        const clausesEl = document.getElementById('analysis-clauses'); if (clausesEl) { clausesEl.innerHTML=''; }
+        (data.clauses||[]).forEach(c => {
+          const card = document.createElement('div'); card.className='analysis-card';
+          const title = document.createElement('div'); title.className='analysis-title'; title.textContent = c.title || 'Clause'; card.appendChild(title);
+          const plain = document.createElement('p'); plain.textContent = c.text || ''; card.appendChild(plain);
+          const exp = (c.analysis||{});
+          const expl = document.createElement('p'); expl.textContent = exp.explanation || ''; card.appendChild(expl);
+          const pros = document.createElement('ul'); (exp.pros||[]).forEach(p=>{ const li=document.createElement('li'); li.textContent=p; pros.appendChild(li); });
+          const cons = document.createElement('ul'); (exp.cons||[]).forEach(p=>{ const li=document.createElement('li'); li.textContent=p; cons.appendChild(li); });
+          const grid = document.createElement('div'); grid.style.display='grid'; grid.style.gridTemplateColumns='repeat(2, minmax(0,1fr))'; grid.style.gap='1rem';
+          const prosWrap = document.createElement('div'); prosWrap.innerHTML='<strong>Pros</strong>'; prosWrap.appendChild(pros);
+          const consWrap = document.createElement('div'); consWrap.innerHTML='<strong>Cons</strong>'; consWrap.appendChild(cons);
+          grid.appendChild(prosWrap); grid.appendChild(consWrap); card.appendChild(grid);
+          clausesEl && clausesEl.appendChild(card);
+        });
+        // Recos
+        renderListTo('analysis-recos', data.recommendations || []);
+      } catch (e) {
+        if (R) { R.setRendered('analysis-summary', document.createTextNode(`Error: ${e.message}`)); }
+        renderListTo('analysis-obligations', []);
+        renderListTo('analysis-timelines', []);
+        renderListTo('analysis-risks', []);
+        renderListTo('analysis-glossary', []);
+        const clausesEl = document.getElementById('analysis-clauses'); if (clausesEl) clausesEl.innerHTML='';
+        renderListTo('analysis-recos', []);
+      }
+    });
+  });
+})();
