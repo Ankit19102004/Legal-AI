@@ -383,7 +383,7 @@ if (typeof module !== 'undefined' && module.exports) {
 (function tabs(){
   document.addEventListener('DOMContentLoaded', () => {
     const tabs = Array.from(document.querySelectorAll('.nav-tab'));
-    const sections = ['#upload-section', '#chat-section', '#advisory-section'].map(s => document.querySelector(s));
+    const sections = ['#upload-section', '#advisory-section'].map(s => document.querySelector(s));
     function show(target){
       sections.forEach(sec => sec.classList.add('hidden-tab'));
       const el = document.querySelector(target);
@@ -828,6 +828,50 @@ if (typeof module !== 'undefined' && module.exports) {
         const clausesEl = document.getElementById('analysis-clauses'); if (clausesEl) clausesEl.innerHTML='';
         renderListTo('analysis-recos', []);
       }
+    });
+  });
+})();
+
+(function uxImprovements(){
+  document.addEventListener('DOMContentLoaded', () => {
+    // Drag & drop for analyze
+    const drop = document.getElementById('analyze-drop');
+    const input = document.getElementById('analyze-file');
+    if (drop && input) {
+      ['dragover','dragenter'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('drag-over'); }));
+      ;['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('drag-over'); }));
+      drop.addEventListener('drop', e => { if (e.dataTransfer?.files?.[0]) { input.files = e.dataTransfer.files; } });
+    }
+
+    // Example fillers
+    const sumEx = document.getElementById('summary-example');
+    if (sumEx) sumEx.addEventListener('click', () => {
+      const t = document.getElementById('summary-input');
+      if (t) t.value = 'This Master Service Agreement governs the relationship between Acme and Client. Payment terms are Net 30. Either party may terminate for material breach with 30 days notice. Confidentiality obligations last 2 years. The governing law is California. Liability is capped at fees paid in the last 12 months.';
+    });
+    const clauseEx = document.getElementById('clause-example');
+    if (clauseEx) clauseEx.addEventListener('click', () => {
+      const t = document.getElementById('clause-input');
+      if (t) t.value = 'Limitation of Liability: Except for willful misconduct, in no event will either party be liable for any indirect, incidental, or consequential damages. Aggregate liability is limited to the fees paid in the twelve (12) months preceding the claim.';
+    });
+
+    // Export JSON (analysis)
+    const exportBtns = document.querySelectorAll('.export-json[data-target="analysis"]');
+    exportBtns.forEach(b => b.addEventListener('click', () => {
+      const jsonEl = document.getElementById('analysis-summary-json');
+      try {
+        const blob = new Blob([jsonEl?.textContent || '{}'], {type:'application/json'});
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'analysis.json'; a.click(); URL.revokeObjectURL(a.href);
+      } catch {}
+    }));
+
+    // Clause expand/collapse
+    const clausesWrap = document.getElementById('analysis-clauses');
+    if (clausesWrap) clausesWrap.addEventListener('click', (e) => {
+      const card = e.target.closest('.analysis-card');
+      if (!card) return;
+      const body = Array.from(card.children).slice(1);
+      body.forEach((node, idx) => { if (idx>0) node.classList.toggle('hidden'); });
     });
   });
 })();

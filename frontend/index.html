@@ -31,7 +31,6 @@
         <!-- Navigation Tabs -->
         <nav class="nav-tabs">
             <button class="nav-tab active" data-target="#upload-section"><i class="fas fa-upload"></i> Upload</button>
-            <button class="nav-tab" data-target="#chat-section"><i class="fas fa-comments"></i> Q&A</button>
             <button class="nav-tab" data-target="#advisory-section"><i class="fas fa-lightbulb"></i> Advisory Tools</button>
         </nav>
 
@@ -59,8 +58,8 @@
                 <div class="upload-status" id="upload-status"></div>
             </section>
 
-            <!-- Chat Section -->
-            <section class="chat-section hidden" id="chat-section">
+            <!-- Chat Section (hidden by default and no tab link) -->
+            <section class="chat-section hidden-tab" id="chat-section">
                 <div class="section-header">
                     <h2><i class="fas fa-comments"></i> Document Q&A</h2>
                     <p>Ask questions about your uploaded document</p>
@@ -71,33 +70,9 @@
                         </span>
                     </div>
                 </div>
-
                 <div class="chat-container">
-                    <div class="chat-messages" id="chat-messages">
-                        <div class="welcome-message">
-                            <i class="fas fa-robot"></i>
-                            <p>Hello! I've analyzed your document. Ask me any questions about it.</p>
-                        </div>
-                    </div>
-
-                    <div class="chat-input-container">
-                        <div class="input-wrapper">
-                            <input 
-                                type="text" 
-                                id="question-input" 
-                                placeholder="e.g., What are the termination clauses? What are the key obligations?"
-                                class="question-input"
-                                autocomplete="off"
-                            >
-                            <button type="button" id="ask-btn" class="ask-btn" disabled>
-                                <i class="fas fa-paper-plane"></i>
-                            </button>
-                        </div>
-                        <div class="input-hint">
-                            <i class="fas fa-lightbulb"></i>
-                            <span>Press Enter to send or click the send button</span>
-                        </div>
-                    </div>
+                    <div class="chat-messages" id="chat-messages"></div>
+                    <div class="chat-input-container"></div>
                 </div>
 
                 <div class="chat-actions">
@@ -123,15 +98,21 @@
                         <div class="tool-card-header"><i class="fas fa-magnifying-glass"></i> One-Click Document Analysis</div>
                         <div class="tool-card-body">
                             <div class="input-wrapper" style="flex-wrap: wrap; gap: 0.75rem;">
-                                <input type="file" id="analyze-file" accept=".pdf">
-                                <button type="button" id="analyze-btn" class="ask-btn"><i class="fas fa-magic"></i> Analyze</button>
+                                <div id="analyze-drop" class="upload-drop-zone" style="min-height: 120px;">
+                                    <i class="fas fa-file-pdf upload-icon"></i>
+                                    <p class="upload-text">Drag & drop a PDF here or choose a file</p>
+                                    <input type="file" id="analyze-file" accept=".pdf" class="file-input">
+                                    <button type="button" id="analyze-btn" class="upload-btn"><i class="fas fa-magic"></i> Analyze</button>
+                                </div>
                             </div>
+                            <small>We’ll create a friendly dashboard: summary, obligations, timelines, risks, clause explanations, glossary, and recommendations.</small>
                             <div class="analysis-grid">
                                 <div class="analysis-card">
                                     <div class="analysis-title"><i class="fas fa-align-left"></i> Summary</div>
                                     <div class="result-actions">
                                         <button class="toggle-view" data-target="analysis-summary">View JSON</button>
                                         <button class="copy-json" data-target="analysis-summary">Copy</button>
+                                        <button class="export-json" data-target="analysis">Export JSON</button>
                                     </div>
                                     <div id="analysis-summary-output" class="rendered-view"></div>
                                     <pre id="analysis-summary-json" class="json-view hidden"></pre>
@@ -153,7 +134,7 @@
                                     <ul id="analysis-glossary" class="bullet-list"></ul>
                                 </div>
                                 <div class="analysis-card" style="grid-column: 1 / -1;">
-                                    <div class="analysis-title"><i class="fas fa-diagram-project"></i> Clause Explanations</div>
+                                    <div class="analysis-title"><i class="fas fa-diagram-project"></i> Clause Explanations <small>(click a clause to expand)</small></div>
                                     <div id="analysis-clauses"></div>
                                 </div>
                                 <div class="analysis-card" style="grid-column: 1 / -1;">
@@ -198,7 +179,8 @@
                         <div class="tool-card-body">
                             <div class="input-wrapper" style="flex-direction: column;">
                                 <textarea id="summary-input" class="question-input" rows="5" placeholder="Paste text to summarize..."></textarea>
-                                <div class="actions-end">
+                                <div class="actions-end" style="gap: .5rem;">
+                                    <button type="button" id="summary-example" class="ask-btn btn-secondary"><i class="fas fa-flask"></i> Try example</button>
                                     <button type="button" id="summarize-btn" class="ask-btn"><i class="fas fa-bolt"></i> Summarize</button>
                                 </div>
                             </div>
@@ -219,7 +201,8 @@
                         <div class="tool-card-body">
                             <div class="input-wrapper" style="flex-direction: column;">
                                 <textarea id="clause-input" class="question-input" rows="4" placeholder="Paste a clause to explain..."></textarea>
-                                <div class="actions-end">
+                                <div class="actions-end" style="gap: .5rem;">
+                                    <button type="button" id="clause-example" class="ask-btn btn-secondary"><i class="fas fa-flask"></i> Try example</button>
                                     <button type="button" id="explain-btn" class="ask-btn"><i class="fas fa-comment-dots"></i> Explain</button>
                                 </div>
                             </div>
